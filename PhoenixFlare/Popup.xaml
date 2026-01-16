@@ -1,0 +1,36 @@
+<views:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui"
+               xmlns:views="http://schemas.microsoft.com/dotnet/2022/maui/toolkit" x:Class="PhoenixFlare.Popup" BackgroundColor="Black" Padding="0" Margin="0">
+
+    <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=#222}" CornerRadius="15" WidthRequest="400" Padding="20">
+        <VerticalStackLayout Spacing="12">
+            <Label Text="Tuya Configuration" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center"/>
+            
+            <Entry x:Name="ClientIdEntry" Placeholder="Client ID" />
+            <Entry x:Name="ClientSecretEntry" Placeholder="Client Secret" IsPassword="True" />
+            <Entry x:Name="UserIdEntry" Placeholder="User ID" />
+            
+            <Picker x:Name="RegionPicker" Title="Select Region">
+                <Picker.ItemsSource>
+                    <x:Array Type="{x:Type x:String}">
+                        <x:String>Europe (eu)</x:String>
+                        <x:String>America (us)</x:String>
+                        <x:String>China (cn)</x:String>
+                        <x:String>India (in)</x:String>
+                    </x:Array>
+                </Picker.ItemsSource>
+            </Picker>
+            
+            <HorizontalStackLayout>
+                <Label Text="Auto Start:" FontSize="14" VerticalOptions="Center" Margin="0, 0, 15, 0" />
+                <Switch x:Name="AutoStartToggle"
+                        OnColor="OrangeRed" 
+                        ThumbColor="White" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout HorizontalOptions="End" Spacing="10">
+                <Button Text="Cancel" Clicked="OnCancelClicked" BackgroundColor="Transparent" TextColor="White"/>
+                <Button Text="Save &amp; Connect" Clicked="OnSaveClicked" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </Frame>
+</views:Popup>

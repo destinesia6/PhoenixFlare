@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:PhoenixFlare"
+             x:Class="PhoenixFlare.MainPage"
+             x:DataType="local:MainPage">
+    
+    <VerticalStackLayout Padding="20" x:Name="PageContainer">
+        <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Start" Margin="0, 0, 0, 20">
+            <Image Grid.Column="0" 
+                   Source="phoenixlogo.png" 
+                   MaximumWidthRequest="50" 
+                   Aspect="AspectFit" />
+
+            <Label Grid.Column="1" 
+                   Text="Smart Home Controls" 
+                   FontSize="25" 
+                   HorizontalOptions="Center" 
+                   VerticalOptions="Start" />
+
+            <ImageButton Grid.Column="2" 
+                         Source="settings_icon.png" 
+                         Clicked="OnOpenSettingsClicked" 
+                         HeightRequest="30" WidthRequest="30" 
+                         CornerRadius="15" /> 
+        </Grid>
+        
+    
+        <CollectionView x:Name="DevicesListView">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="local:DeviceResult">
+                    <HorizontalStackLayout Padding="10" Spacing="15">
+                        <Switch IsToggled="{Binding IsLightOn, Mode=OneWay}" 
+                                IsEnabled="{Binding Online}"
+                                AutomationId="{Binding Id}"
+                                OnColor="OrangeRed" 
+                                Toggled="OnDeviceToggled" Margin="0" />
+                        
+                        <Label Text="{Binding Name}" 
+                               VerticalOptions="Center" 
+                               Margin="0, 0, 10, 0"
+                               FontSize="18" />
+                        
+                        <Button Text="{Binding BoundKeyName, Mode=OneWay, StringFormat='Key: {0}'}"
+                                Clicked="OnBindKeyClicked"
+                                CommandParameter="{Binding .}"
+                                BackgroundColor="OrangeRed" />
+                    </HorizontalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
+
+</ContentPage>
