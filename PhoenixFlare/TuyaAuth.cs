@@ -90,9 +90,24 @@ public static class TuyaAuthHelper
 public class TokenResult
 {
 	[JsonPropertyName("access_token")] public string AccessToken { get; set; }
-	[JsonPropertyName("expire_time")] public int ExpireTime { get; set; }
+
+	[JsonPropertyName("expire_time")]
+	public int ExpireTime
+	{
+		get => field;
+		set
+		{
+			field = value;
+			SetExpirey(value);
+		}
+	}
 	[JsonPropertyName("refresh_token")] public string RefreshToken { get; set; }
 	[JsonPropertyName("uid")] public string UID { get; set; }
+	[JsonIgnore] public DateTime ExpireDateTime { get; internal set; }
+	private void SetExpirey(int expireTimeSeconds)
+	{
+		ExpireDateTime = DateTime.Now.AddSeconds(expireTimeSeconds);
+	}
 }
 
 public class AuthResponse<T>

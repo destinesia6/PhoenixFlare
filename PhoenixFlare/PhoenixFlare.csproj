@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
         <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 
         <UseMonoRuntime>false</UseMonoRuntime>
@@ -65,7 +64,7 @@
         <PackageReference Include="H.NotifyIcon" Version="2.4.1" />
         <PackageReference Include="H.NotifyIcon.Maui" Version="2.4.1" />
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)"/>
-        <PackageReference Include="Microsoft.Maui.Core" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Maui.Core" Version="10.0.1" />
         <PackageReference Include="Microsoft.Maui.Essentials" Version="10.0.10" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0"/>
         <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.3" />

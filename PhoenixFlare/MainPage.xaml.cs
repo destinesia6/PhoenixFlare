@@ -26,7 +26,7 @@ public partial class MainPage : ContentPage
 #endif
 		Task.Run(async () =>
 		{
-			_accessToken = await SetAccessToken();
+			await SetAccessToken();
 			await GetDeviceList();
 			
 			MainThread.BeginInvokeOnMainThread(LoadBsonAndRegisterKeys);
@@ -34,7 +34,7 @@ public partial class MainPage : ContentPage
 	}
 	
 	private TaskbarIcon _trayPopup = new();
-	private string? _accessToken;
+	private TokenResult _accessToken;
 	private HttpClient _httpClient = new();
 	public ObservableCollection<DeviceResult> Devices { get; } = [];
 	
@@ -113,7 +113,7 @@ public partial class MainPage : ContentPage
 			SaveSettingsToBson();
         
 			// Re-connect with new credentials and get the devices for that account
-			_accessToken = await SetAccessToken();
+			await SetAccessToken();
 			await GetDeviceList();
 			LoadBsonAndRegisterKeys();
 		}
@@ -255,7 +255,7 @@ public partial class MainPage : ContentPage
 	
 	private TuyaSettings _settings = new();
 
-	public async Task<string?> SetAccessToken()
+	public async Task SetAccessToken()
 	{
 		var t = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
 		var method = "GET";
@@ -267,7 +267,6 @@ public partial class MainPage : ContentPage
 		var url = "/v1.0/token?grant_type=1";
 
 		// 3. Build StringToSign: Method + \n + Hash + \n + Headers(empty) + \n + URL
-		// IMPORTANT: Note the double \n for the empty Headers section
 		string stringToSign = $"{method}\n{emptyBodyHash}\n\n{url}";
 
 		// 4. Build the final sign source: clientId + t + stringToSign
@@ -285,15 +284,48 @@ public partial class MainPage : ContentPage
 
 		HttpResponseMessage response = await _httpClient.SendAsync(request);
 		AuthResponse<TokenResult>? deserializedResponse = JsonSerializer.Deserialize<AuthResponse<TokenResult>>(await response.Content.ReadAsStringAsync());
-		return deserializedResponse?.Result.AccessToken;
+		if (deserializedResponse is not null) _accessToken = deserializedResponse.Result;
+	}
+
+	public async Task RefreshToken()
+	{
+		var t = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+		var method = "GET";
+    
+		// 1. The SHA256 of an empty body (mandatory for GET)
+		var emptyBodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    
+		// 2. The URL Path + Query
+		var url = $"/v1.0/token/{_accessToken.RefreshToken}";
+
+		// 3. Build StringToSign: Method + \n + Hash + \n + Headers(empty) + \n + URL
+		string stringToSign = $"{method}\n{emptyBodyHash}\n\n{url}";
+
+		// 4. Build the final sign source: clientId + t + stringToSign
+		string signSource = _settings.ClientId + t + stringToSign;
+
+		// 5. HMAC-SHA256
+		string sign = TuyaAuthHelper.HMACSHA256Encrypt(signSource, _settings.ClientSecret);
+
+		// 6. Execute Request
+		HttpRequestMessage request = new(HttpMethod.Get, $"{_settings.RegionUrl}{url}");
+		request.Headers.Add("client_id", _settings.ClientId);
+		request.Headers.Add("t", t);
+		request.Headers.Add("sign", sign);
+		request.Headers.Add("sign_method", "HMAC-SHA256");
+		
+		HttpResponseMessage response = await _httpClient.SendAsync(request);
+		AuthResponse<TokenResult>? deserializedResponse = JsonSerializer.Deserialize<AuthResponse<TokenResult>>(await response.Content.ReadAsStringAsync());
+		if (deserializedResponse is not null) _accessToken = deserializedResponse.Result;
 	}
 
 	public async Task GetDeviceList()
 	{
 		try
 		{
+			if (_accessToken.ExpireDateTime <= DateTime.Now) await RefreshToken();
 			string url = $"/v1.0/users/{_settings.UserId}/devices";
-			HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken, _settings.RegionUrl);
+			HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken.AccessToken, _settings.RegionUrl);
 			HttpResponseMessage response = await _httpClient.SendAsync(request);
 			string jsonResponse = await response.Content.ReadAsStringAsync();
 			Response<List<DeviceResult>>? desResponse =
@@ -319,10 +351,11 @@ public partial class MainPage : ContentPage
 	// Simplified logic for a Tuya Request
 	public async Task<bool> ToggleLight(string deviceId, bool turnOn)
 	{
+		if (_accessToken.ExpireDateTime <= DateTime.Now) await RefreshToken();
 		string body = "{\"commands\":[{\"code\":\"switch_led\",\"value\":" + turnOn.ToString().ToLower();
 		body += "}]}";
 		string url = $"/v1.0/devices/{deviceId}/commands";
-		HttpRequestMessage request = TuyaAuthHelper.GeneratePOSTRequest(body, url, _accessToken, _settings.RegionUrl);
+		HttpRequestMessage request = TuyaAuthHelper.GeneratePOSTRequest(body, url, _accessToken.AccessToken, _settings.RegionUrl);
 		HttpResponseMessage response = await _httpClient.SendAsync(request);
 		return response.IsSuccessStatusCode;
 	}
