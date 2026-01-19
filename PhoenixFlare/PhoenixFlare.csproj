@@ -25,7 +25,7 @@
         <ApplicationTitle>PhoenixFlare</ApplicationTitle>
 
         <!-- App Identifier -->
-        <ApplicationId>com.companyname.phoenixflare</ApplicationId>
+        <ApplicationId>phoenixsystems.phoenixflare</ApplicationId>
 
         <!-- Versions -->
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
