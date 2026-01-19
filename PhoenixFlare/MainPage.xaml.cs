@@ -34,7 +34,7 @@ public partial class MainPage : ContentPage
 	}
 	
 	private TaskbarIcon _trayPopup = new();
-	private TokenResult _accessToken;
+	private TokenResult? _accessToken;
 	private HttpClient _httpClient = new();
 	public ObservableCollection<DeviceResult> Devices { get; } = [];
 	
@@ -74,7 +74,7 @@ public partial class MainPage : ContentPage
 		var device = Devices.FirstOrDefault(d => d.Id.GetHashCode() == id);
 		if (device == null) return;
 
-		bool targetState = !device.IsLightOn;
+		bool targetState = !await IsDeviceOn(device.Id);
 		bool success = await ToggleLight(device.Id, targetState);
 
 		if (success)
@@ -323,9 +323,9 @@ public partial class MainPage : ContentPage
 	{
 		try
 		{
-			if (_accessToken.ExpireDateTime <= DateTime.Now) await RefreshToken();
+			if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
 			string url = $"/v1.0/users/{_settings.UserId}/devices";
-			HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken.AccessToken, _settings.RegionUrl);
+			HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken?.AccessToken ?? "", _settings.RegionUrl);
 			HttpResponseMessage response = await _httpClient.SendAsync(request);
 			string jsonResponse = await response.Content.ReadAsStringAsync();
 			Response<List<DeviceResult>>? desResponse =
@@ -360,12 +360,34 @@ public partial class MainPage : ContentPage
 		return response.IsSuccessStatusCode;
 	}
 	
+	public async Task<bool> IsDeviceOn(string deviceId)
+	{
+		if (deviceId is null) return false;
+		if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
+		string url = $"/v1.0/devices/{deviceId}/status";
+		HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken.AccessToken, _settings.RegionUrl);
+		HttpResponseMessage response = await _httpClient.SendAsync(request);
+		string responseJson = await response.Content.ReadAsStringAsync();
+		Response<List<Status>>? desResponse = JsonSerializer.Deserialize<Response<List<Status>>>(responseJson);
+		if (desResponse?.Result.FirstOrDefault(s => s.Code == "switch_led")?.Value is JsonElement valueBool) return valueBool.GetBoolean();
+		return false;
+	}
+	
 	private async void OnDeviceToggled(object sender, ToggledEventArgs e)
 	{
 		if (sender is not Switch sw) return;
 		// We use AutomationId to store the Device ID string
 		string deviceId = sw.AutomationId;
-		await ToggleLight(deviceId, e.Value);
+		bool deviceStatus = await IsDeviceOn(deviceId);
+		bool switchStatus = e.Value;
+		
+		await ToggleLight(deviceId, !deviceStatus);
+		
+		if (switchStatus != !deviceStatus)
+		{
+			DeviceResult? selectedDevice = Devices.FirstOrDefault(d => d.Id == deviceId);
+			MainThread.BeginInvokeOnMainThread(() => selectedDevice?.IsLightOn = !deviceStatus);
+		}
 #if WINDOWS
 		UpdateTrayMenu();
 #endif
@@ -446,11 +468,10 @@ public partial class MainPage : ContentPage
 			// 2. Add Device Items
 			foreach (DeviceResult device in Devices)
 			{
-				string action = device.IsLightOn ? "Turn Off" : "Turn On";
 				MenuFlyoutItem deviceItem = new()
 				{
 					Text = $"{(device.IsLightOn ? "●" : "○")} {device.Name}",
-					Command = new Command(async () => await ToggleLightFromTray(device, !device.IsLightOn)),
+					Command = new Command(async () => await ToggleLightFromTray(device))
 				};
 
 				menu.Add(deviceItem);
@@ -466,8 +487,9 @@ public partial class MainPage : ContentPage
 		});
 	}
 
-	private async Task ToggleLightFromTray(DeviceResult device, bool lightOn)
+	private async Task ToggleLightFromTray(DeviceResult device)
 	{
+		bool lightOn = !await IsDeviceOn(device.Id);
 		bool success = await ToggleLight(device.Id, lightOn);
 		if (success)
 		{
