@@ -4,10 +4,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Security.Cryptography;
-using CommunityToolkit.Maui.Core;
 using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Mvvm.Input;
 using H.NotifyIcon;
+using Microsoft.UI.Xaml.Input;
 
 namespace PhoenixFlare;
 
@@ -41,16 +41,16 @@ public partial class MainPage : ContentPage
 #if WINDOWS
 	private IntPtr _oldWndProc = IntPtr.Zero;
 	private delegate IntPtr WinProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
-	private WinProc _newWndProc;
+	private WinProc? _newWndProc;
 	private IntPtr _windowHandle;
 
 	private void SetupGlobalHotkeys()
 	{
-		var window = App.Current.Windows.First().Handler.PlatformView as MauiWinUIWindow;
+		MauiWinUIWindow? window = Application.Current?.Windows[0].Handler?.PlatformView as MauiWinUIWindow;
 		_windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
 
 		// Create a delegate for our new window procedure
-		_newWndProc = new WinProc(SubClassWndProc);
+		_newWndProc = SubClassWndProc;
     
 		// Hook the window
 		_oldWndProc = WindowHelper.SetWindowLongPtr(_windowHandle, WindowHelper.GWL_WNDPROC, 
@@ -71,7 +71,7 @@ public partial class MainPage : ContentPage
 	private async Task HandleGlobalHotkey(int id)
 	{
 		// 1. Find the actual object instance in the list
-		var device = Devices.FirstOrDefault(d => d.Id.GetHashCode() == id);
+		DeviceResult? device = Devices.FirstOrDefault(d => d.Id.GetHashCode() == id);
 		if (device == null) return;
 
 		bool targetState = !await IsDeviceOn(device.Id);
@@ -121,25 +121,25 @@ public partial class MainPage : ContentPage
 
 	private async void OnOpenSettingsClicked(object sender, EventArgs e) => await ShowSettingsPopup();
 
-	private async void OnBindKeyClicked(object sender, EventArgs e)
+	private void OnBindKeyClicked(object sender, EventArgs e)
 	{
-		DeviceResult device = (DeviceResult)((Button)sender).CommandParameter;
-		MainThread.BeginInvokeOnMainThread(() => device.BoundKeyName = "Listening...");
+		DeviceResult? device = (DeviceResult?)((Button)sender).CommandParameter;
+		MainThread.BeginInvokeOnMainThread(() => device?.BoundKeyName = "Listening...");
 
 #if WINDOWS
-		var window = App.Current.Windows.First().Handler.PlatformView as MauiWinUIWindow;
+		MauiWinUIWindow? window = Application.Current?.Windows[0].Handler?.PlatformView as MauiWinUIWindow;
     
 		// We must use the specific KeyEventHandler type
-		Microsoft.UI.Xaml.Input.KeyEventHandler handler = null;
+		KeyEventHandler? handler = null;
     
-		handler = (s, ex) =>
+		handler = (_, ex) =>
 		{
 			uint vKey = (uint)ex.Key;
-			int hotKeyId = device.Id.GetHashCode();
+			int hotKeyId = device?.Id.GetHashCode() ?? -1;
 
 			WindowHelper.UnregisterHotKey(_windowHandle, hotKeyId);
-			MainThread.BeginInvokeOnMainThread(() => device.BoundKeyName = ex.Key.ToString());
-			device.BoundVKey = vKey;
+			MainThread.BeginInvokeOnMainThread(() => device?.BoundKeyName = ex.Key.ToString());
+			device?.BoundVKey = vKey;
 
 			// Register with MOD_NONE for single-key global trigger
 			bool success = WindowHelper.RegisterHotKey(_windowHandle, hotKeyId, 
@@ -151,11 +151,11 @@ public partial class MainPage : ContentPage
 			}
         
 			// Remove the listener using the same delegate type
-			window.Content.KeyDown -= handler;
+			window?.Content.KeyDown -= handler;
 			ex.Handled = true; // Prevents the key from being processed further by the UI
 		};
 
-		window.Content.KeyDown += handler;
+		window?.Content.KeyDown += handler;
 #endif
 	}
 
@@ -257,23 +257,23 @@ public partial class MainPage : ContentPage
 
 	public async Task SetAccessToken()
 	{
-		var t = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
-		var method = "GET";
+		string t = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+		const string method = "GET";
     
 		// 1. The SHA256 of an empty body (mandatory for GET)
-		var emptyBodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+		const string emptyBodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     
 		// 2. The URL Path + Query
-		var url = "/v1.0/token?grant_type=1";
+		const string url = "/v1.0/token?grant_type=1";
 
 		// 3. Build StringToSign: Method + \n + Hash + \n + Headers(empty) + \n + URL
-		string stringToSign = $"{method}\n{emptyBodyHash}\n\n{url}";
+		const string stringToSign = $"{method}\n{emptyBodyHash}\n\n{url}";
 
 		// 4. Build the final sign source: clientId + t + stringToSign
 		string signSource = _settings.ClientId + t + stringToSign;
 
 		// 5. HMAC-SHA256
-		string sign = TuyaAuthHelper.HMACSHA256Encrypt(signSource, _settings.ClientSecret);
+		string sign = TuyaAuthHelper.Hmacsha256Encrypt(signSource, _settings.ClientSecret);
 
 		// 6. Execute Request
 		HttpRequestMessage request = new(HttpMethod.Get, $"{_settings.RegionUrl}{url}");
@@ -289,14 +289,14 @@ public partial class MainPage : ContentPage
 
 	public async Task RefreshToken()
 	{
-		var t = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
-		var method = "GET";
+		string t = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+		const string method = "GET";
     
 		// 1. The SHA256 of an empty body (mandatory for GET)
-		var emptyBodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+		const string emptyBodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     
 		// 2. The URL Path + Query
-		var url = $"/v1.0/token/{_accessToken.RefreshToken}";
+		string url = $"/v1.0/token/{_accessToken?.RefreshToken}";
 
 		// 3. Build StringToSign: Method + \n + Hash + \n + Headers(empty) + \n + URL
 		string stringToSign = $"{method}\n{emptyBodyHash}\n\n{url}";
@@ -305,7 +305,7 @@ public partial class MainPage : ContentPage
 		string signSource = _settings.ClientId + t + stringToSign;
 
 		// 5. HMAC-SHA256
-		string sign = TuyaAuthHelper.HMACSHA256Encrypt(signSource, _settings.ClientSecret);
+		string sign = TuyaAuthHelper.Hmacsha256Encrypt(signSource, _settings.ClientSecret);
 
 		// 6. Execute Request
 		HttpRequestMessage request = new(HttpMethod.Get, $"{_settings.RegionUrl}{url}");
@@ -316,7 +316,14 @@ public partial class MainPage : ContentPage
 		
 		HttpResponseMessage response = await _httpClient.SendAsync(request);
 		AuthResponse<TokenResult>? deserializedResponse = JsonSerializer.Deserialize<AuthResponse<TokenResult>>(await response.Content.ReadAsStringAsync());
-		if (deserializedResponse is not null) _accessToken = deserializedResponse.Result;
+		if (deserializedResponse is not null && !String.IsNullOrWhiteSpace(deserializedResponse.Result.AccessToken))
+		{
+			_accessToken = deserializedResponse.Result;
+		}
+		else
+		{
+			await SetAccessToken();
+		}
 	}
 
 	public async Task GetDeviceList()
@@ -351,21 +358,21 @@ public partial class MainPage : ContentPage
 	// Simplified logic for a Tuya Request
 	public async Task<bool> ToggleLight(string deviceId, bool turnOn)
 	{
-		if (_accessToken.ExpireDateTime <= DateTime.Now) await RefreshToken();
+		if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
 		string body = "{\"commands\":[{\"code\":\"switch_led\",\"value\":" + turnOn.ToString().ToLower();
 		body += "}]}";
 		string url = $"/v1.0/devices/{deviceId}/commands";
-		HttpRequestMessage request = TuyaAuthHelper.GeneratePOSTRequest(body, url, _accessToken.AccessToken, _settings.RegionUrl);
+		HttpRequestMessage request = TuyaAuthHelper.GeneratePOSTRequest(body, url, _accessToken?.AccessToken ?? "", _settings.RegionUrl);
 		HttpResponseMessage response = await _httpClient.SendAsync(request);
 		return response.IsSuccessStatusCode;
 	}
 	
 	public async Task<bool> IsDeviceOn(string deviceId)
 	{
-		if (deviceId is null) return false;
+		if (String.IsNullOrWhiteSpace(deviceId)) return false;
 		if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
 		string url = $"/v1.0/devices/{deviceId}/status";
-		HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken.AccessToken, _settings.RegionUrl);
+		HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken?.AccessToken ?? "", _settings.RegionUrl);
 		HttpResponseMessage response = await _httpClient.SendAsync(request);
 		string responseJson = await response.Content.ReadAsStringAsync();
 		Response<List<Status>>? desResponse = JsonSerializer.Deserialize<Response<List<Status>>>(responseJson);
@@ -409,20 +416,6 @@ public partial class MainPage : ContentPage
 		return builder.ToString().ToUpper();
 	}
 	
-	protected override void OnHandlerChanging(HandlerChangingEventArgs args)
-	{
-		base.OnHandlerChanging(args);
-#if WINDOWS
-		if (args.NewHandler == null) // App is closing or navigating away
-		{
-			foreach (var device in Devices)
-			{
-				WindowHelper.UnregisterHotKey(_windowHandle, device.Id.GetHashCode());
-			}
-		}
-#endif
-	}
-	
 	//------ Tray icon code -------
 #if WINDOWS	
 	private void ShowTrayIcon()  
@@ -435,24 +428,32 @@ public partial class MainPage : ContentPage
 	
 	private async void AddTrayIcon() // Creates the object for the tray icon, which can be added when the app is closed  
 	{
-		var assmebly = Assembly.GetExecutingAssembly();
+		Assembly assmebly = Assembly.GetExecutingAssembly();
 		string resourceName = $"{assmebly.GetName().Name}.Resources.phoenixtrayicon.ico";
-		using var stream = assmebly.GetManifestResourceStream(resourceName);
-		_trayPopup = new TaskbarIcon  
-		{  
-			Id = new Guid("96bc756c-03d3-4927-991f-06d203929e7c"),
-			Icon = new System.Drawing.Icon(stream),
-			LeftClickCommand = ShowWindowCommand,  
-			NoLeftClickDelay = true  
-		};  
-		MenuFlyout menu = [];  
-		MenuFlyoutItem exitMenuItem = new()  
-		{  
-			Command = CloseAppCommand,  
-			Text = "Exit"  
-		};  
-		menu.Add(exitMenuItem);  
-		FlyoutBase.SetContextFlyout(_trayPopup, menu);  
+		await using Stream? stream = assmebly.GetManifestResourceStream(resourceName);
+		if (stream != null)
+		{
+			_trayPopup = new TaskbarIcon
+			{
+				Id = new Guid("96bc756c-03d3-4927-991f-06d203929e7c"),
+				Icon = new System.Drawing.Icon(stream),
+				LeftClickCommand = ShowWindowCommand,
+				NoLeftClickDelay = true
+			};
+
+			MenuFlyout menu = [];
+			MenuFlyoutItem exitMenuItem = new()
+			{
+				Command = CloseAppCommand,
+				Text = "Exit"
+			};
+			menu.Add(exitMenuItem);
+			FlyoutBase.SetContextFlyout(_trayPopup, menu);
+		}
+		else
+		{
+			Console.WriteLine("Tray icon cannot be created, icon was not found.");
+		}
 	}
 	
 	private void UpdateTrayMenu()
@@ -471,7 +472,7 @@ public partial class MainPage : ContentPage
 				MenuFlyoutItem deviceItem = new()
 				{
 					Text = $"{(device.IsLightOn ? "●" : "○")} {device.Name}",
-					Command = new Command(async () => await ToggleLightFromTray(device))
+					Command = new Command(async void () => await ToggleLightFromTray(device))
 				};
 
 				menu.Add(deviceItem);
@@ -509,14 +510,14 @@ public partial class MainPage : ContentPage
   [RelayCommand]
   public void CloseApp()
   {
-      Application.Current.Quit();
+      Application.Current?.Quit();
   }
 #endif	
 	//-----------------------------
 
-	public string GetSignatureString(string method, string content, string URL)
+	public string GetSignatureString(string method, string content, string url)
 	{
-		string stringToSign = method + "\n" + sha256_hash(content) + "\n" + URL;
+		string stringToSign = method + "\n" + sha256_hash(content) + "\n" + url;
 		string timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
 		return _settings.ClientId + timestamp + stringToSign;
 	}
