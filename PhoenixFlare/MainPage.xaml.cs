@@ -16,21 +16,10 @@ public partial class MainPage : ContentPage
 	public MainPage()
 	{
 		InitializeComponent();
-		DevicesListView.ItemsSource = Devices;
-		LoadSettingsFromBson();
-#if WINDOWS
-		SetupGlobalHotkeys(); // Initialize the Windows message listener
 		AddTrayIcon();
 		PageContainer.Children.Remove(_trayPopup);
 		ShowTrayIcon();
-#endif
-		Task.Run(async () =>
-		{
-			await SetAccessToken();
-			await GetDeviceList();
-			
-			MainThread.BeginInvokeOnMainThread(LoadBsonAndRegisterKeys);
-		});
+		InitializeApp();
 	}
 	
 	private TaskbarIcon _trayPopup = new();
@@ -44,6 +33,24 @@ public partial class MainPage : ContentPage
 	private WinProc? _newWndProc;
 	private IntPtr _windowHandle;
 
+	public void InitializeApp()
+	{
+#if WINDOWS
+		UnsubscribeGlobalHotkeys();
+#endif
+		DevicesListView.ItemsSource = Devices;
+		LoadSettingsFromBson();
+#if WINDOWS
+		SetupGlobalHotkeys(); // Initialize the Windows message listener
+#endif
+		Task.Run(async () =>
+		{
+			await SetAccessToken();
+			await GetDeviceList();
+			MainThread.BeginInvokeOnMainThread(LoadBsonAndRegisterKeys);
+		});
+	}
+
 	private void SetupGlobalHotkeys()
 	{
 		MauiWinUIWindow? window = Application.Current?.Windows[0].Handler?.PlatformView as MauiWinUIWindow;
@@ -55,6 +62,18 @@ public partial class MainPage : ContentPage
 		// Hook the window
 		_oldWndProc = WindowHelper.SetWindowLongPtr(_windowHandle, WindowHelper.GWL_WNDPROC, 
 			Marshal.GetFunctionPointerForDelegate(_newWndProc));
+	}
+	
+	private void UnsubscribeGlobalHotkeys()
+	{
+		// Check if we actually have a handle and a saved old procedure
+		if (_windowHandle == IntPtr.Zero || _oldWndProc == IntPtr.Zero) return;
+		// Restore the original window procedure
+		WindowHelper.SetWindowLongPtr(_windowHandle, WindowHelper.GWL_WNDPROC, _oldWndProc);
+        
+		// Reset our variables to be safe
+		_oldWndProc = IntPtr.Zero;
+		_newWndProc = null;
 	}
 	
 	private IntPtr SubClassWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
