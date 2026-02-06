@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.LifecycleEvents;
+using Serilog;
+using Serilog.Core;
 #if WINDOWS
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -15,6 +17,10 @@ public static class MauiProgram
 	public static MauiApp CreateMauiApp()
 	{
 		var builder = MauiApp.CreateBuilder();
+		
+		string logPath = Path.Combine(FileSystem.AppDataDirectory, "log.txt");
+		Logger logger = new LoggerConfiguration().WriteTo.File(logPath, rollingInterval: RollingInterval.Day).CreateLogger();
+		builder.Logging.AddSerilog(logger);
 		builder
 			.UseMauiApp<App>()
 			.UseMauiCommunityToolkit()

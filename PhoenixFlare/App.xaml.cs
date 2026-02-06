@@ -12,6 +12,10 @@ public partial class App : Application
 		SystemEvents.PowerModeChanged += OnPowerModeChanged;
 #endif
 		InitializeComponent();
+		Microsoft.UI.Xaml.Application.Current.UnhandledException += (sender, e) =>
+		{
+			File.AppendAllText(Path.Combine(FileSystem.AppDataDirectory, "crash.txt"), $"{DateTime.Now}: {e.Exception}\n");
+		};
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)
