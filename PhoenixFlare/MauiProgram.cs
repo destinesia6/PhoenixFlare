@@ -39,7 +39,7 @@ public static class MauiProgram
             {
               if (_hasBeenHidden) return;
               AppWindow? appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WindowNative.GetWindowHandle(window)));
-              appWindow?.Hide();
+              //appWindow?.Hide();
               _hasBeenHidden = true;
             };
           });

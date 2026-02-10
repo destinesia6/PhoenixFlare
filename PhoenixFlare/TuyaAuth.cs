@@ -154,7 +154,7 @@ public class DeviceResult : INotifyPropertyChanged
 	[JsonIgnore]
 	public bool IsLightOn
 	{
-		get => Status?.FirstOrDefault(s => s.Code == "switch_led")?.Value?.ToString()?.ToLower() == "true";
+		get => Status.FirstOrDefault(s => s.Code == "switch_led")?.Value?.ToString()?.ToLower() == "true";
 		set 
 		{
 			var s = Status?.FirstOrDefault(x => x.Code == "switch_led");
