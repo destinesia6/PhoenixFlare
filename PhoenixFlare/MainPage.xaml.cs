@@ -91,6 +91,7 @@ public partial class MainPage : ContentPage
 	{
 		// 1. Find the actual object instance in the list
 		DeviceResult? device = Devices.FirstOrDefault(d => d.Id.GetHashCode() == id);
+		if (device == null) await GetDeviceList();
 		if (device == null) return;
 
 		bool targetState = !await IsDeviceOn(device.Id);
@@ -402,16 +403,18 @@ public partial class MainPage : ContentPage
 	private async void OnDeviceToggled(object sender, ToggledEventArgs e)
 	{
 		if (sender is not Switch sw) return;
-		// We use AutomationId to store the Device ID string
-		string deviceId = sw.AutomationId;
-		bool deviceStatus = await IsDeviceOn(deviceId);
+		// I use AutomationId to store the Device ID string
+		var device = Devices.FirstOrDefault(d => d.Id == sw.AutomationId);
+		if (device == null) await GetDeviceList();
+		if (device == null) return;
+		bool deviceStatus = await IsDeviceOn(device.Id);
 		bool switchStatus = e.Value;
 		
-		await ToggleLight(deviceId, !deviceStatus);
+		await ToggleLight(device.Id, !deviceStatus);
 		
 		if (switchStatus != !deviceStatus)
 		{
-			DeviceResult? selectedDevice = Devices.FirstOrDefault(d => d.Id == deviceId);
+			DeviceResult? selectedDevice = Devices.FirstOrDefault(d => d.Id == device.Id);
 			MainThread.BeginInvokeOnMainThread(() => selectedDevice?.IsLightOn = !deviceStatus);
 		}
 #if WINDOWS
