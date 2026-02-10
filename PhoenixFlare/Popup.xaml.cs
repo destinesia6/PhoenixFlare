@@ -1,5 +1,4 @@
 namespace PhoenixFlare;
-using CommunityToolkit.Maui.Views;
 
 public partial class Popup : CommunityToolkit.Maui.Views.Popup
 {
@@ -34,7 +33,7 @@ public partial class Popup : CommunityToolkit.Maui.Views.Popup
 		await CloseAsync();
 	}
 	
-	private string GetBaseUrl(string region)
+	private static string GetBaseUrl(string region)
 	{
 		return region switch
 		{

@@ -1,0 +1,12 @@
+Setup:
+- Create a tuya development account
+- Make sure your region is correct to your tuya/smartlife account
+- Go to Cloud > Devices > Link App Account > Add App Accout and add your Tuya/Smartlife account
+- You should now see your devices in the Devices > All Devices tab
+- Go the phoenix flare and click the settings
+- Enter the details as follows:
+- Client ID: Cloud > Overview > "Access ID/Client ID"
+- Client Secret: Cloud > Overview "Access Secret/Client Secret" (You will need to click to copy or reveal this)
+- User ID: Cloud > Devices > Link App Acount > UID
+- Region: Cloud > Data Center (This will give you are more detailed region, for example "Central Europe Data Center" and "Western Europe Data Center" would both use EU on PhoenixFlare
+- Choose weather you want to auto start, set up keybinds and enjoy

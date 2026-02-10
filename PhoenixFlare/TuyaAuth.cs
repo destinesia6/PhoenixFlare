@@ -11,8 +11,8 @@ public static class TuyaAuthHelper
 {
 	private const string _clientId = "7w8chrssfcyeu3yrhjtx";
 	private const string _secret = "55e7f820eb244a2c8b4b0765792b3dca";
-	
-	public static string CalculateSignature(string clientId, string secret, string t, string method, string url, string bodyJson = "", string accessToken = "")
+
+	private static string CalculateSignature(string clientId, string secret, string t, string method, string url, string bodyJson = "", string accessToken = "")
 	{
 		// 1. Generate Content-SHA256 (Hash of the body)
 		string contentSha256 = HashId(bodyJson);
@@ -26,35 +26,29 @@ public static class TuyaAuthHelper
 		string signSource = clientId + accessToken + t + stringToSign;
 
 		// 4. Encrypt using HMAC-SHA256
-		return HMACSHA256Encrypt(signSource, secret);
+		return Hmacsha256Encrypt(signSource, secret);
 	}
 
 	private static string HashId(string str)
-	{
-		if (string.IsNullOrEmpty(str))
-		{
-			// Default hash for an empty body
-			return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-		}
+  {
+      if (String.IsNullOrEmpty(str))
+      {
+          // Default hash for an empty body
+          return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+      }
+      byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(str));
+      return Convert.ToHexStringLower(hashBytes);
+  }
 
-		using (SHA256 sha256 = SHA256.Create())
-		{
-			byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(str));
-			return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-		}
-	}
-
-	// Helper for HMAC-SHA256 (used for the final signature)
-	public static string HMACSHA256Encrypt(string message, string secret)
+    // Helper for HMAC-SHA256 (used for the final signature)
+    public static string Hmacsha256Encrypt(string message, string secret)
 	{
 		byte[] keyByte = Encoding.UTF8.GetBytes(secret);
 		byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-        
-		using (var hmacsha256 = new HMACSHA256(keyByte))
-		{
-			byte[] hashmessage = hmacsha256.ComputeHash(messageBytes);
-			return BitConverter.ToString(hashmessage).Replace("-", "").ToUpper();
-		}
+
+		using HMACSHA256 hmacsha256 = new(keyByte);
+		byte[] hashmessage = hmacsha256.ComputeHash(messageBytes);
+		return Convert.ToHexString(hashmessage).ToUpper();
 	}
 
 	public static HttpRequestMessage GeneratePOSTRequest(string body, string path, string accessToken, string baseUrl = "https://openapi.tuyaeu.com")
@@ -103,7 +97,7 @@ public class TokenResult
 	}
 	[JsonPropertyName("refresh_token")] public string RefreshToken { get; set; }
 	[JsonPropertyName("uid")] public string UID { get; set; }
-	[JsonIgnore] public DateTime ExpireDateTime { get; internal set; }
+	[JsonIgnore] public DateTime ExpireDateTime { get; private set; }
 	private void SetExpirey(int expireTimeSeconds)
 	{
 		ExpireDateTime = DateTime.Now.AddSeconds(expireTimeSeconds);
@@ -146,13 +140,16 @@ public class DeviceResult : INotifyPropertyChanged
 	[JsonPropertyName("status")]
 	public List<Status> Status { get; set; }
 
-	private string _boundKeyName = "None";
 	[JsonIgnore]
-	public string BoundKeyName 
-	{ 
-		get => _boundKeyName; 
-		set { _boundKeyName = value; OnPropertyChanged(); } 
-	}
+	public string BoundKeyName
+	{
+		get;
+		set
+		{
+			field = value;
+			OnPropertyChanged();
+		}
+	} = "None";
 
 	[JsonIgnore]
 	public bool IsLightOn
