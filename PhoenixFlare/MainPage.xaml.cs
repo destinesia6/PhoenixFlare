@@ -72,23 +72,21 @@ public partial class MainPage : ContentPage
 	{
 		// 1. Find the actual object instance in the list
 		var device = Devices.FirstOrDefault(d => d.Id.GetHashCode() == id);
+		if (device == null) await GetDeviceList();
 		if (device == null) return;
 
 		bool targetState = !device.IsLightOn;
 		bool success = await ToggleLight(device.Id, targetState);
-
-		if (success)
+		
+		// 2. Update the property on the UI thread
+		MainThread.BeginInvokeOnMainThread(() =>
 		{
-			// 2. Update the property on the UI thread
-			MainThread.BeginInvokeOnMainThread(() =>
-			{
-				device.IsLightOn = targetState; 
-				// Setting this triggers OnPropertyChanged inside the class
-			});
+			device.IsLightOn = targetState; 
+			// Setting this triggers OnPropertyChanged inside the class
+		});
 #if WINDOWS
-			UpdateTrayMenu();
+		UpdateTrayMenu();
 #endif
-		}
 	}
 #endif
 	
@@ -363,9 +361,11 @@ public partial class MainPage : ContentPage
 	private async void OnDeviceToggled(object sender, ToggledEventArgs e)
 	{
 		if (sender is not Switch sw) return;
+		var device = Devices.FirstOrDefault(d => d.Id == sw.AutomationId);
+		if (device == null) await GetDeviceList();
+		if (device == null) return;
 		// We use AutomationId to store the Device ID string
-		string deviceId = sw.AutomationId;
-		await ToggleLight(deviceId, e.Value);
+		await ToggleLight(device.Id, e.Value);
 #if WINDOWS
 		UpdateTrayMenu();
 #endif
@@ -407,6 +407,7 @@ public partial class MainPage : ContentPage
 	{  
 		if (!PageContainer.Contains(_trayPopup))  
 		{  
+			if (_trayPopup is null) return;
 			PageContainer.Children.Add(_trayPopup);  
 		}  
 	}
