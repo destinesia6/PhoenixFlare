@@ -91,7 +91,8 @@ public partial class MainPage : ContentPage
 	{
 		// 1. Find the actual object instance in the list
 		DeviceResult? device = Devices.FirstOrDefault(d => d.Id.GetHashCode() == id);
-		if (device == null) await GetDeviceList();
+		if (device == null) InitializeApp();
+		device = Devices.FirstOrDefault(d => d.Id.GetHashCode() == id);
 		if (device == null) return;
 
 		bool targetState = !await IsDeviceOn(device.Id);
@@ -221,8 +222,13 @@ public partial class MainPage : ContentPage
 			{
 				DeviceResult? device = Devices.FirstOrDefault(d => d.Id == bind.DeviceId);
 				if (device == null) continue;
-				device.BoundKeyName = bind.KeyName;
-				device.BoundVKey = bind.VKey;
+				
+				MainThread.BeginInvokeOnMainThread(() =>
+				{
+					device.BoundKeyName = bind.KeyName;
+					device.BoundVKey = bind.VKey;
+				});
+				
 #if WINDOWS
 				WindowHelper.RegisterHotKey(_windowHandle, device.Id.GetHashCode(), 
 					WindowHelper.MOD_NONE, device.BoundVKey);
@@ -378,13 +384,21 @@ public partial class MainPage : ContentPage
 	// Simplified logic for a Tuya Request
 	public async Task<bool> ToggleLight(string deviceId, bool turnOn)
 	{
-		if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
-		string body = "{\"commands\":[{\"code\":\"switch_led\",\"value\":" + turnOn.ToString().ToLower();
-		body += "}]}";
-		string url = $"/v1.0/devices/{deviceId}/commands";
-		HttpRequestMessage request = TuyaAuthHelper.GeneratePOSTRequest(body, url, _accessToken?.AccessToken ?? "", _settings.RegionUrl);
-		HttpResponseMessage response = await _httpClient.SendAsync(request);
-		return response.IsSuccessStatusCode;
+		try 
+		{
+			if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
+			string body = "{\"commands\":[{\"code\":\"switch_led\",\"value\":" + turnOn.ToString().ToLower();
+			body += "}]}";
+			string url = $"/v1.0/devices/{deviceId}/commands";
+			HttpRequestMessage request = TuyaAuthHelper.GeneratePOSTRequest(body, url, _accessToken?.AccessToken ?? "", _settings.RegionUrl);
+			HttpResponseMessage response = await _httpClient.SendAsync(request);
+			return response.IsSuccessStatusCode;
+		}
+		catch (Exception ex)
+		{
+			InitializeApp();
+			return false;
+		}
 	}
 	
 	public async Task<bool> IsDeviceOn(string deviceId)
@@ -405,7 +419,8 @@ public partial class MainPage : ContentPage
 		if (sender is not Switch sw) return;
 		// I use AutomationId to store the Device ID string
 		var device = Devices.FirstOrDefault(d => d.Id == sw.AutomationId);
-		if (device == null) await GetDeviceList();
+		if (device == null) InitializeApp();
+		device = Devices.FirstOrDefault(d => d.Id == sw.AutomationId);
 		if (device == null) return;
 		bool deviceStatus = await IsDeviceOn(device.Id);
 		bool switchStatus = e.Value;
