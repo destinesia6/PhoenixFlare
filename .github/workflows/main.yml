@@ -42,7 +42,7 @@ jobs:
           -r win-x64 `
           --self-contained true `
           /p:PublishReadyToRun=false `
-          /p:WindowsPackageType=none
+          /p:WindowsPackageType=None
 
     - name: Zip the Build Output
       shell: pwsh
