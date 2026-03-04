@@ -1,0 +1,59 @@
+name: Build and Release MAUI Windows
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x # Ensure this matches your project version
+
+    - name: Install MAUI Workload
+      run: dotnet workload install maui
+
+    - name: Extract Version from .csproj
+      id: get_version
+      shell: pwsh
+      run: |
+        # Find the .csproj file
+        $projectFile = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
+        # Extract ApplicationDisplayVersion
+        [xml]$xml = Get-Content $projectFile
+        $version = $xml.Project.PropertyGroup.ApplicationDisplayVersion
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+    - name: Publish Windows App
+      run: |
+        dotnet publish -c Release -f net10.0-windows10.0.19041.0 `
+          /p:GenerateAppxPackageOnBuild=true `
+          /p:AppxPackageSigningEnabled=false
+
+    - name: Zip the Build Output
+      shell: pwsh
+      run: |
+        $publishDir = "bin/Release/net10.0-windows10.0.19041.0/win10-x64/publish"
+        Compress-Archive -Path "$publishDir\*" -DestinationPath "PhoenixFlare.zip"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.get_version.outputs.VERSION }}-${{ github.run_number }}
+        name: ${{ steps.get_version.outputs.VERSION }}
+        body: ${{ github.event.head_commit.message }}
+        files: MauiApp-Windows.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
