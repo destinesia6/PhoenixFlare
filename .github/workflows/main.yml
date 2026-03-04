@@ -39,7 +39,7 @@ jobs:
     - name: Publish Windows App
       run: |
         dotnet publish -c Release -f net10.0-windows10.0.19041.0 `
-          -r win10-x64 `
+          -r win-x64 `
           --self-contained true `
           /p:PublishReadyToRun=false `
           /p:WindowsPackageType=none
@@ -47,7 +47,7 @@ jobs:
     - name: Zip the Build Output
       shell: pwsh
       run: |
-        $publishDir = "bin/Release/net10.0-windows10.0.19041.0/win10-x64/publish"
+        $publishDir = "bin/Release/net10.0-windows10.0.19041.0/win-x64/publish"
         Compress-Archive -Path "$publishDir\*" -DestinationPath "PhoenixFlare.zip"
 
     - name: Create Release
