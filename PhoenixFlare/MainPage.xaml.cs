@@ -124,12 +124,6 @@ public partial class MainPage : ContentPage
 
 		if (result is not null)
 		{
-#if WINDOWS
-			if (result.AutoStart != _settings.AutoStart)
-			{
-				AutoStartService.SetAutoStart(result.AutoStart);
-			}
-#endif
 			_settings = result;
 			SaveSettingsToBson();
         
@@ -137,6 +131,12 @@ public partial class MainPage : ContentPage
 			await SetAccessToken();
 			await GetDeviceList();
 			LoadBsonAndRegisterKeys();
+#if WINDOWS
+			if (result.AutoStart != _settings.AutoStart)
+			{
+				AutoStartService.SetAutoStart(result.AutoStart);
+			}
+#endif
 		}
 	}
 
