@@ -279,10 +279,12 @@ public partial class MainPage : ContentPage
 		}
 	}
 	
-	private TuyaSettings _settings = new();
+	private TuyaSettings? _settings = new();
 
 	public async Task SetAccessToken()
 	{
+		if (_settings is null) LoadSettingsFromBson();
+		
 		string t = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
 		const string method = "GET";
     
@@ -296,21 +298,29 @@ public partial class MainPage : ContentPage
 		const string stringToSign = $"{method}\n{emptyBodyHash}\n\n{url}";
 
 		// 4. Build the final sign source: clientId + t + stringToSign
-		string signSource = _settings.ClientId + t + stringToSign;
+		string signSource = _settings?.ClientId + t + stringToSign;
 
 		// 5. HMAC-SHA256
-		string sign = TuyaAuthHelper.Hmacsha256Encrypt(signSource, _settings.ClientSecret);
+		string sign = TuyaAuthHelper.Hmacsha256Encrypt(signSource, _settings?.ClientSecret ?? "");
 
 		// 6. Execute Request
-		HttpRequestMessage request = new(HttpMethod.Get, $"{_settings.RegionUrl}{url}");
-		request.Headers.Add("client_id", _settings.ClientId);
+		HttpRequestMessage request = new(HttpMethod.Get, $"{_settings?.RegionUrl}{url}");
+		request.Headers.Add("client_id", _settings?.ClientId);
 		request.Headers.Add("t", t);
 		request.Headers.Add("sign", sign);
 		request.Headers.Add("sign_method", "HMAC-SHA256");
 
-		HttpResponseMessage response = await _httpClient.SendAsync(request);
-		AuthResponse<TokenResult>? deserializedResponse = JsonSerializer.Deserialize<AuthResponse<TokenResult>>(await response.Content.ReadAsStringAsync());
-		if (deserializedResponse is not null) _accessToken = deserializedResponse.Result;
+		try
+		{
+			HttpResponseMessage response = await _httpClient.SendAsync(request);
+			AuthResponse<TokenResult>? deserializedResponse = JsonSerializer.Deserialize<AuthResponse<TokenResult>>(await response.Content.ReadAsStringAsync());
+			if (deserializedResponse is not null) _accessToken = deserializedResponse.Result;
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine(ex);
+		}
+		
 	}
 
 	public async Task RefreshToken()
