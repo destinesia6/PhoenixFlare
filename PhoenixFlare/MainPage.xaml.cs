@@ -202,6 +202,18 @@ public partial class MainPage : ContentPage
 #endif
 	}
 
+	private void UnbindKey(object sender, EventArgs e)
+	{
+		DeviceResult? device = (DeviceResult?)((Button)sender).CommandParameter;
+		WindowHelper.UnregisterHotKey(_windowHandle, device?.Id.GetHashCode() ?? -1);
+		MainThread.BeginInvokeOnMainThread(() => device?.BoundKeyName = "None");
+		device?.BoundVKey = 0;
+#if WINDOWS
+		MauiWinUIWindow? window = Application.Current?.Windows[0].Handler?.PlatformView as MauiWinUIWindow;
+		
+#endif		
+	}
+
 	private void SaveBindsToBson()
 	{
 		string path = Path.Combine(FileSystem.AppDataDirectory, "keys.bson");

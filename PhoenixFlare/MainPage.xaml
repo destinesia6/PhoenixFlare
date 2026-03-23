@@ -45,6 +45,11 @@
                                 Clicked="OnBindKeyClicked"
                                 CommandParameter="{Binding .}"
                                 BackgroundColor="OrangeRed" />
+                        
+                        <Button Text="Remove Bind"
+                                Clicked="UnbindKey"
+                                CommandParameter="{Binding .}"
+                                BackgroundColor="OrangeRed" />
                     </HorizontalStackLayout>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
