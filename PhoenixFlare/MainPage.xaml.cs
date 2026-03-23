@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using H.NotifyIcon;
 using Microsoft.UI.Xaml.Input;
 
@@ -25,6 +26,7 @@ public partial class MainPage : ContentPage
 	private TaskbarIcon _trayPopup = new();
 	private TokenResult? _accessToken;
 	private HttpClient _httpClient = new();
+	private StreamDeckBridge _bridge;
 	public ObservableCollection<DeviceResult> Devices { get; } = [];
 	
 #if WINDOWS
@@ -35,6 +37,26 @@ public partial class MainPage : ContentPage
 
 	public void InitializeApp()
 	{
+		_bridge = new StreamDeckBridge();
+		_bridge.Start();
+		
+		WeakReferenceMessenger.Default.Unregister<RequestDeviceListMessage>(this);
+		WeakReferenceMessenger.Default.Unregister<ToggleDeviceMessage>(this);
+		
+		WeakReferenceMessenger.Default.Register<RequestDeviceListMessage>(this, async (r, m) =>
+		{
+			await GetDeviceList();
+			IEnumerable<object> devices = Devices;
+			m.Callback(devices);
+		});
+
+		WeakReferenceMessenger.Default.Register<ToggleDeviceMessage>(this, async (r, m) =>
+		{
+			bool currentState = await IsDeviceOn(m.DeviceId);
+			bool success = await ToggleLight(m.DeviceId, !currentState);
+			m.Callback(success ? !currentState : currentState);
+		});
+		
 #if WINDOWS
 		UnsubscribeGlobalHotkeys();
 #endif
@@ -583,3 +605,4 @@ public partial class MainPage : ContentPage
       return sb.ToString();
   }
 }
+
