@@ -42,6 +42,7 @@ public partial class MainPage : ContentPage
 		
 		WeakReferenceMessenger.Default.Unregister<RequestDeviceListMessage>(this);
 		WeakReferenceMessenger.Default.Unregister<ToggleDeviceMessage>(this);
+		WeakReferenceMessenger.Default.Unregister<DeviceStatusMessage>(this);
 		
 		WeakReferenceMessenger.Default.Register<RequestDeviceListMessage>(this, async (r, m) =>
 		{
@@ -55,6 +56,11 @@ public partial class MainPage : ContentPage
 			bool currentState = await IsDeviceOn(m.DeviceId);
 			bool success = await ToggleLight(m.DeviceId, !currentState);
 			m.Callback(success ? !currentState : currentState);
+		});
+		
+		WeakReferenceMessenger.Default.Register<DeviceStatusMessage>(this, async (r, m) =>
+		{
+			m.Callback(await IsDeviceOn(m.DeviceId));
 		});
 		
 #if WINDOWS

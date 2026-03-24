@@ -25,13 +25,14 @@ public class StreamDeckBridge
 
 	private void OnMessageReceived(string rawMessage, IWebSocketConnection socket)
 	{
-        
-		MainThread.BeginInvokeOnMainThread(() => 
+
+		MainThread.BeginInvokeOnMainThread(() =>
 		{
 			if (rawMessage == "FETCH_DEVICES")
 			{
 				// Requesting data from MainPage
-				WeakReferenceMessenger.Default.Send(new RequestDeviceListMessage(devices => {
+				WeakReferenceMessenger.Default.Send(new RequestDeviceListMessage(devices =>
+				{
 					string json = JsonSerializer.Serialize(devices);
 					socket.Send("DEVICE_LIST:" + json);
 				}));
@@ -44,10 +45,20 @@ public class StreamDeckBridge
 					socket.Send($"STATUS:{deviceId}:{status}");
 				}));
 			}
+			else if (rawMessage.StartsWith("GET_STATUS"))
+			{
+				string deviceId = rawMessage.Split(':')[1];
+				WeakReferenceMessenger.Default.Send(new DeviceStatusMessage(deviceId, status =>
+				{
+					socket.Send($"STATUS:{deviceId}:{status}");
+				}));
+			}
 		});
+
 	}
 }
 
 public record RequestDeviceListMessage(Action<IEnumerable<object>> Callback);
 
 public record ToggleDeviceMessage(string DeviceId, Action<bool> Callback);
+public record DeviceStatusMessage(string DeviceId, Action<bool> Callback);
