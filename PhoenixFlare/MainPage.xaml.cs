@@ -69,7 +69,7 @@ public partial class MainPage : ContentPage
 		DevicesListView.ItemsSource = Devices;
 		LoadSettingsFromBson();
 #if WINDOWS
-		SetupGlobalHotkeys(); // Initialize the Windows message listener
+		SetupGlobalHotkeys();
 #endif
 		Task.Run(async () =>
 		{
@@ -393,8 +393,15 @@ public partial class MainPage : ContentPage
 		request.Headers.Add("sign_method", "HMAC-SHA256");
 		
 		HttpResponseMessage response = await _httpClient.SendAsync(request);
+		
+		if (!response.IsSuccessStatusCode) 
+		{
+			await SetAccessToken();
+			return;
+		}
+		
 		AuthResponse<TokenResult>? deserializedResponse = JsonSerializer.Deserialize<AuthResponse<TokenResult>>(await response.Content.ReadAsStringAsync());
-		if (deserializedResponse is not null && !String.IsNullOrWhiteSpace(deserializedResponse.Result.AccessToken))
+		if (!String.IsNullOrWhiteSpace(deserializedResponse?.Result?.AccessToken))
 		{
 			_accessToken = deserializedResponse.Result;
 		}
