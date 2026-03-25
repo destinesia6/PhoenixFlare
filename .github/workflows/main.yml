@@ -34,6 +34,7 @@ jobs:
         # Extract ApplicationDisplayVersion
         [xml]$xml = Get-Content $projectFile
         $version = $xml.Project.PropertyGroup.ApplicationDisplayVersion
+        Write-Host "Version: [$version]"
         echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
     - name: Publish Windows App
