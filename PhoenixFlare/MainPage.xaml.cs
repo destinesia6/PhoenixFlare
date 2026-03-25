@@ -234,8 +234,7 @@ public partial class MainPage : ContentPage
 
 		using MemoryStream ms = new();
 		using Newtonsoft.Json.Bson.BsonDataWriter writer = new(ms);
-    
-		// Use the Newtonsoft Serializer here
+
 		Newtonsoft.Json.JsonSerializer serializer = new();
 		serializer.Serialize(writer, data);
     
