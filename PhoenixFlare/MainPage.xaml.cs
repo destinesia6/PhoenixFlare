@@ -461,14 +461,24 @@ public partial class MainPage : ContentPage
 	
 	public async Task<bool> IsDeviceOn(string deviceId)
 	{
-		if (String.IsNullOrWhiteSpace(deviceId)) return false;
-		if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
-		string url = $"/v1.0/devices/{deviceId}/status";
-		HttpRequestMessage request = TuyaAuthHelper.GenerateGETRequest(url, _accessToken?.AccessToken ?? "", _settings.RegionUrl);
-		HttpResponseMessage response = await _httpClient.SendAsync(request);
-		string responseJson = await response.Content.ReadAsStringAsync();
-		Response<List<Status>>? desResponse = JsonSerializer.Deserialize<Response<List<Status>>>(responseJson);
-		if (desResponse?.Result.FirstOrDefault(s => s.Code == "switch_led")?.Value is JsonElement valueBool) return valueBool.GetBoolean();
+		try
+		{
+			if (String.IsNullOrWhiteSpace(deviceId)) return false;
+			if (_accessToken?.ExpireDateTime <= DateTime.Now) await RefreshToken();
+			string url = $"/v1.0/devices/{deviceId}/status";
+			HttpRequestMessage request =
+				TuyaAuthHelper.GenerateGETRequest(url, _accessToken?.AccessToken ?? "", _settings.RegionUrl);
+			HttpResponseMessage response = await _httpClient.SendAsync(request);
+			string responseJson = await response.Content.ReadAsStringAsync();
+			Response<List<Status>>? desResponse = JsonSerializer.Deserialize<Response<List<Status>>>(responseJson);
+			if (desResponse?.Result.FirstOrDefault(s => s.Code == "switch_led")?.Value is JsonElement valueBool)
+				return valueBool.GetBoolean();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine(ex.Message);
+		}
+		
 		return false;
 	}
 	
